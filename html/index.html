@@ -8,7 +8,7 @@
     <h2>Websocket Test</h2>
 
     <form id="emit" method="POST" action='#'>
-      <textarea cols="50" rows="5" name="emit_data" id="emit_data" placeholder="Code"></textarea>
+      <textarea cols="50" rows="5" name="emit_data" id="emit_data" placeholder="Message here."></textarea>
       <input type="submit" value="Run">
     </form>
 
@@ -28,7 +28,7 @@
         });
 
         socket.on('my_response', function(msg) {
-          $('#log').append('<br>' + $('<div/>').text('Received #' + ': ' + msg.data).html());
+          $('#log').append('<br>' + $('<div/>').text('data' + ': ' + msg.data + ', count: ' + msg.count).html());
         });
 
         $('form#emit').submit(function(event) {
