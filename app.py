@@ -90,11 +90,20 @@ def first_message(message):
     print("first_event, data: " + str(message.get("data")))
     session["cluster_id"] = message.get("cluster_id")
     session["token"] = message.get("Authorization")
-    if (
-        session["cluster_id"] is None or
-        session["token"] is None
-    ):
-        print("first_event, missing cluster_id and/or token.")
+    session["pod"] = message.get("pod")
+    session["namespace"] = message.get("namespace")
+    for keys in session["token"], session["cluster_id"], session["pod"], session["namespace"]:
+        if not isinstance(keys, str):
+            print("first_event, missing data from frontend.")
+            disconnect()
+            return
+        if len(keys) == 0:
+            print("first_event, missing data from frontend.")
+            disconnect()
+            return
+
+    if len(session["token"].split(" ")) != 2:
+        print("first_event, unexpected token format.")
         disconnect()
         return
     load_kubernetes_config(
@@ -103,15 +112,20 @@ def first_message(message):
     )
     session["api"] = core_v1_api.CoreV1Api()
     exec_command = ['/bin/sh']
-    session["resp"] = stream(
-        session["api"].connect_get_namespaced_pod_exec,
-        name="efk-kibana-5dc5c455df-bk776",
-        namespace='efk',
-        command=exec_command,
-        stderr=True, stdin=True,
-        stdout=True, tty=False,
-        _preload_content=False
-    )
+    try:
+        session["resp"] = stream(
+            session["api"].connect_get_namespaced_pod_exec,
+            name=session["pod"],
+            namespace=session["namespace"],
+            command=exec_command,
+            stderr=True, stdin=True,
+            stdout=True, tty=False,
+            _preload_content=False
+        )
+    except Exception as e:
+        print(f"Cannot stream: {str(e)}")
+        disconnect()
+        return
     while session["resp"].is_open():
         session["resp"].update(timeout=1)
         if session["resp"].peek_stdout():

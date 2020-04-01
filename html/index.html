@@ -28,7 +28,9 @@
           var message = {
             data: "connected!",
             cluster_id: "c-6rlzw",
-            Authorization: "Bearer token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f"
+            Authorization: "Bearer token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f",
+            pod: "curl-debugger-56dc9dcd9b-q8kgn",
+            namespace: "debugger"
           }
           socket.emit('first_event', message);
         });
