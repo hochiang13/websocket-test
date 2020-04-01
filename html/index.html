@@ -7,12 +7,12 @@
   <body>
     <h2>Websocket Test</h2>
 
+    <div id='log'></div>
+
     <form id="emit" method="POST" action='#'>
       <textarea cols="50" rows="5" name="emit_data" id="emit_data" placeholder="Message here."></textarea>
       <input type="submit" value="Run">
     </form>
-
-    <div id='log'></div>
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
@@ -25,12 +25,18 @@
 
         socket.on('connect', function() {
           console.log("client connect event, sending first_event.")
-          socket.emit('first_event', {data: 'connected!'});
+          var message = {
+            data: "connected!",
+            cluster_id: "c-6rlzw",
+            Authorization: "Bearer token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f"
+          }
+          socket.emit('first_event', message);
         });
 
         socket.on('server_response', function(msg) {
           console.log("client server_response, writing output to DOM.")
-          $('#log').append('<br>' + $('<div/>').text('data' + ': ' + msg.data + ', count: ' + msg.count).html());
+          console.log(msg.data)
+          msg.data.split("\n").forEach(add_line_to_log);
         });
 
         $('form#emit').submit(function(event) {
@@ -39,6 +45,10 @@
           return false;
         });
         
+        function add_line_to_log(value) {
+          $('#log').append('<br>' + $('<div/>').text(value).html());
+        }
+
         /*
         $('form#emit').submit(function(event) {
           socket.emit('submit_event', {data: $('#emit_data').val()});

@@ -41,10 +41,8 @@ app.config["CACERT"] = b64encode(response_json["value"].encode("utf-8")).decode(
 
 
 def load_kubernetes_config(token, cluster_id):
-    # CACERT read from rancher, set token to ADMIN_TOKEN for now
-    #token = token.split(" ")[1]
+    token = token.split(" ")[1]
     dummy_string = "dummy"
-    token = current_app.config["ADMIN_TOKEN"].split(" ")[1]
     server_string = "https://" + current_app.config["RANCHER_IP"]
     server_string += "/k8s/clusters/"
     server_string += cluster_id
@@ -85,33 +83,64 @@ def load_kubernetes_config(token, cluster_id):
 
 @socketio.on('connect', namespace='/test')
 def test_connect():
-    print("server connect event, sending server_response.")
-    emit('server_response', {'data': 'Connected', 'count': 0})
+    print("Connect event.")
 
 @socketio.on('first_event', namespace='/test')
 def first_message(message):
-    print("server first_event, data: " + str(message.get("data")))
-    """
-    session["cluster_id"] = message["cluster_id"]
-    session["token"] = message["token"]
-    """
+    print("first_event, data: " + str(message.get("data")))
+    session["cluster_id"] = message.get("cluster_id")
+    session["token"] = message.get("Authorization")
+    if (
+        session["cluster_id"] is None or
+        session["token"] is None
+    ):
+        print("first_event, missing cluster_id and/or token.")
+        disconnect()
+        return
+    load_kubernetes_config(
+        token=session["token"],
+        cluster_id=session["cluster_id"]
+    )
+    session["api"] = core_v1_api.CoreV1Api()
+    exec_command = ['/bin/sh']
+    session["resp"] = stream(
+        session["api"].connect_get_namespaced_pod_exec,
+        name="efk-kibana-5dc5c455df-bk776",
+        namespace='efk',
+        command=exec_command,
+        stderr=True, stdin=True,
+        stdout=True, tty=False,
+        _preload_content=False
+    )
+    while session["resp"].is_open():
+        session["resp"].update(timeout=1)
+        if session["resp"].peek_stdout():
+            temp_string = session["resp"].read_stdout()
+            print("STDOUT: %s" % temp_string)
+            emit(
+                'server_response',
+                {'data': temp_string}
+            )
+        if session["resp"].peek_stderr():
+            temp_string = session["resp"].read_stderr()
+            print("STDERR: %s" % temp_string)
+            emit(
+                'server_response',
+                {'data': temp_string}
+            )
+    disconnect()
 
 @socketio.on('submit_event', namespace='/test')
 def test_message(message):
-    print("server submit_event, sending server_resonse.")
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('server_response',
-         {'data': message['data'], 'count': session['receive_count']})
+    print("submit_event.")
+    if message.get("data"):
+        session["resp"].write_stdin(message.get("data") + "\n")
 
 @socketio.on('disconnect', namespace='/test')
 def test_disconnect():
     print('Client disconnected', request.sid)
-
-
-
-@socketio.on('my_ping', namespace='/test')
-def ping_pong():
-    emit('my_pong')
+    if session.get("resp"):
+        session["resp"].close()
 
 
 if __name__ == '__main__':
