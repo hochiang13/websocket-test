@@ -18,21 +18,23 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
     <script type="text/javascript" charset="utf-8">
       $(document).ready(function() {
-        var url = 'http://192.168.56.101';
-        var port = '8080';
+        var url = "http://192.168.56.101:8080/shell?namespace=debugger&pod=curl-debugger-56dc9dcd9b-q8kgn"
+        var option = {
+          transportOptions: {
+            polling: {
+              extraHeaders: {
+                Authorization: "Bearer token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f",
+                clusterid: "c-6rlzw"
+              }
+            }
+          }
+        }
 
-        var socket = io.connect(url + ":" + port + "/test");
+        var socket = io.connect(url, option);
 
         socket.on('connect', function() {
           console.log("client connect event, sending first_event.")
-          var message = {
-            data: "connected!",
-            cluster_id: "c-6rlzw",
-            Authorization: "Bearer token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f",
-            pod: "curl-debugger-56dc9dcd9b-q8kgn",
-            namespace: "debugger"
-          }
-          socket.emit('first_event', message);
+          socket.emit('first_event');
         });
 
         socket.on('server_response', function(msg) {

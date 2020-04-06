@@ -8,6 +8,7 @@ from kubernetes.client import Configuration
 from kubernetes.client.rest import ApiException
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
+import time
 
 async_mode = "eventlet"
 
@@ -81,42 +82,55 @@ def load_kubernetes_config(token, cluster_id):
     Configuration.set_default(c)
 
 
-@socketio.on('connect', namespace='/test')
-def test_connect():
+@socketio.on('connect', namespace='/shell')
+def shell_connect():
+    # note: the connect event on server side must end,
+    # or the server will not accept events!
+
     print("Connect event.")
+    token = request.headers.get("Authorization")
+    cluster_id = request.headers.get("clusterid")
+    namespace = request.args.get("namespace")
+    pod = request.args.get("pod")
+    for key in token, cluster_id, namespace, pod:
+        if not isinstance(key, str):
+            print("connect event, missing data from frontend.")
+            return False
+        if len(key) == 0:
+            print("connect event, missing data from frontend.")
+            return False
+    if len(token.split(" ")) != 2:
+        print("connect event, unexpected Authorization received.")
+        return False
+    if token.split(" ")[0] != "Bearer":
+        print("connect event, unexpected Authorization received.")
+        return False
 
-@socketio.on('first_event', namespace='/test')
-def first_message(message):
-    print("first_event, data: " + str(message.get("data")))
-    session["cluster_id"] = message.get("cluster_id")
-    session["token"] = message.get("Authorization")
-    session["pod"] = message.get("pod")
-    session["namespace"] = message.get("namespace")
-    for keys in session["token"], session["cluster_id"], session["pod"], session["namespace"]:
-        if not isinstance(keys, str):
-            print("first_event, missing data from frontend.")
-            disconnect()
-            return
-        if len(keys) == 0:
-            print("first_event, missing data from frontend.")
-            disconnect()
-            return
 
-    if len(session["token"].split(" ")) != 2:
-        print("first_event, unexpected token format.")
-        disconnect()
-        return
+@socketio.on('first_event', namespace='/shell')
+def shell_first():
+    # need a first event after connect event to start stream to kubernetes thread.
+    # Tried starting a background thread in the connect event function,
+    #   it doesn't work because it is outside of the application context,
+    #   and socketio.emit will send event to all clients.
+
+    print("first_event.")
+    token = request.headers.get("Authorization")
+    cluster_id = request.headers.get("clusterid")
+    namespace = request.args.get("namespace")
+    pod = request.args.get("pod")
+
     load_kubernetes_config(
-        token=session["token"],
-        cluster_id=session["cluster_id"]
+        token=token,
+        cluster_id=cluster_id
     )
-    session["api"] = core_v1_api.CoreV1Api()
+    api = core_v1_api.CoreV1Api()
     exec_command = ['/bin/sh']
     try:
         session["resp"] = stream(
-            session["api"].connect_get_namespaced_pod_exec,
-            name=session["pod"],
-            namespace=session["namespace"],
+            api.connect_get_namespaced_pod_exec,
+            name=pod,
+            namespace=namespace,
             command=exec_command,
             stderr=True, stdin=True,
             stdout=True, tty=False,
@@ -144,14 +158,14 @@ def first_message(message):
             )
     disconnect()
 
-@socketio.on('submit_event', namespace='/test')
-def test_message(message):
+@socketio.on('submit_event', namespace='/shell')
+def shell_submit(message):
     print("submit_event.")
     if message.get("data"):
         session["resp"].write_stdin(message.get("data") + "\n")
 
-@socketio.on('disconnect', namespace='/test')
-def test_disconnect():
+@socketio.on('disconnect', namespace='/shell')
+def shell_disconnect():
     print('Client disconnected', request.sid)
     if session.get("resp"):
         session["resp"].close()
