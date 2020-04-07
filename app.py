@@ -9,14 +9,18 @@ from kubernetes.client.rest import ApiException
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 import time
+import os
 
 async_mode = "eventlet"
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'cannot be guessed'
-app.config["ADMIN_TOKEN"] = "token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f"
-app.config["RANCHER_IP"] = "10.62.164.163"
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY") or \
+    'cannot be guessed'
+app.config["ADMIN_TOKEN"] = os.environ.get("ADMIN_TOKEN") or \
+    "token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f"
+app.config["RANCHER_IP"] = os.environ.get("RANCHER_IP") or \
+    "10.62.164.163"
 socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
 
 # request rancher for cacert, base64 encode it, and save string for kubernetes_config.py
