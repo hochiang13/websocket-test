@@ -18,13 +18,13 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
     <script type="text/javascript" charset="utf-8">
       $(document).ready(function() {
-        var url = "http://fixopaas.10.62.164.143.xip.io/shell?namespace=debugger&pod=curl-debugger-56dc9dcd9b-q8kgn"
+        var url = "http://192.168.56.101:8080/shell?namespace=john-namespace&pod=k8s-ws-7748b986cf-rq4r5"
         var option = {
           transportOptions: {
             polling: {
               extraHeaders: {
-                Authorization: "Bearer token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f",
-                clusterid: "c-6rlzw"
+                Authorization: "Bearer token-dt5mj:f87g97szf7chsdtcxrlr4scd8wjm6jzqwz6r7gpxmbh66v8v2mc88p",
+                clusterid: "c-fcwn9"
               }
             }
           }
@@ -39,13 +39,13 @@
 
         socket.on('server_response', function(msg) {
           console.log("client server_response, writing output to DOM.")
-          console.log(msg.data)
-          msg.data.split("\n").forEach(add_line_to_log);
+          console.log(msg)
+          msg.split("\n").forEach(add_line_to_log);
         });
 
         $('form#emit').submit(function(event) {
           console.log("sending submit event.")
-          socket.emit('submit_event', {data: $('#emit_data').val()});
+          socket.emit('submit_event', $('#emit_data').val());
           return false;
         });
         

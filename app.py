@@ -10,80 +10,16 @@ from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 import time
 import os
+import websocket, ssl, base64
+
 
 async_mode = "eventlet"
-
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY") or \
     'cannot be guessed'
-app.config["ADMIN_TOKEN"] = os.environ.get("ADMIN_TOKEN") or \
-    "token-hxfsx:kqdf44kck5n4pdnjs4v22hchlvdb95g59xt5nmj75ldsgx2wnq695f"
 app.config["RANCHER_IP"] = os.environ.get("RANCHER_IP") or \
     "10.62.164.163"
 socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
-
-# request rancher for cacert, base64 encode it, and save string for kubernetes_config.py
-url = "https://{0}/v3/settings/cacerts".format(app.config["RANCHER_IP"])
-querystring = {}
-payload = {}
-headers = {
-    'Authorization': app.config["ADMIN_TOKEN"],
-    'Content-Type': "application/json"
-}
-try:
-    response = requests.get(
-        url, data=json.dumps(payload), headers=headers, params=querystring,
-        verify=False)
-except:
-    print("Cannot connect to rancher server for cacert, abort!")
-
-response_json = json.loads(response.text)
-if response.status_code != 200:
-    print("GET cacert reply " + response.status_code + ", abort!")
-
-app.config["CACERT"] = b64encode(response_json["value"].encode("utf-8")).decode("utf-8")
-
-
-def load_kubernetes_config(token, cluster_id):
-    token = token.split(" ")[1]
-    dummy_string = "dummy"
-    server_string = "https://" + current_app.config["RANCHER_IP"]
-    server_string += "/k8s/clusters/"
-    server_string += cluster_id
-    dictionary = {
-        "current-context": dummy_string,
-        "contexts": [
-            {
-                "name": dummy_string,
-                "context": {
-                    "user": dummy_string,
-                    "cluster": dummy_string
-                }
-            }
-        ],
-        "clusters": [
-            {
-                "name": dummy_string,
-                "cluster": {
-                    "server": server_string,
-                    "certificate-authority-data": current_app.config["CACERT"]
-                }
-            }
-        ],
-        "users": [
-            {
-                "name": dummy_string,
-                "user": {
-                    "token": token
-                }
-            }
-        ]
-    }
-    loader = KubeConfigLoader(config_dict=dictionary)
-    c = type.__call__(Configuration)
-    loader.load_and_set(c)
-    Configuration.set_default(c)
 
 
 @socketio.on('connect', namespace='/shell')
@@ -113,7 +49,7 @@ def shell_connect():
 
 @socketio.on('first_event', namespace='/shell')
 def shell_first():
-    # need a first event after connect event to start stream to kubernetes thread.
+    # need a first event after connect event to start websocket to rancher.
     # Tried starting a background thread in the connect event function,
     #   it doesn't work because it is outside of the application context,
     #   and socketio.emit will send event to all clients.
@@ -124,55 +60,56 @@ def shell_first():
     namespace = request.args.get("namespace")
     pod = request.args.get("pod")
 
-    load_kubernetes_config(
-        token=token,
-        cluster_id=cluster_id
-    )
-    api = core_v1_api.CoreV1Api()
-    exec_command = ['/bin/sh']
+    #container=k8s-ws&
+    url = f"wss://{current_app.config['RANCHER_IP']}/k8s/clusters/{cluster_id}/api/v1"
+    url += f"/namespaces/{namespace}/pods/{pod}/exec?stdout=1&stdin=1&stderr=1&tty=1"
+    url += "&command=%2Fbin%2Fsh&command=-c&command=TERM%3Dxterm-256color%3B%20export%20"
+    url += "TERM%3B%20%5B%20-x%20%2Fbin%2Fbash%20%5D%20%26%26%20(%5B%20-x%20%2Fusr%2Fbin"
+    url += "%2Fscript%20%5D%20%26%26%20%2Fusr%2Fbin%2F"
+    url += "script%20-q%20-c%20%22%2Fbin%2Fbash%22%20%2F"
+    url += "dev%2Fnull%20%7C%7C%20exec%20%2Fbin%2Fbash)%20%7C%7C%20exec%20%2Fbin%2Fsh"
+
     try:
-        session["resp"] = stream(
-            api.connect_get_namespaced_pod_exec,
-            name=pod,
-            namespace=namespace,
-            command=exec_command,
-            stderr=True, stdin=True,
-            stdout=True, tty=False,
-            _preload_content=False
-        )
+        session["wss"] = websocket.create_connection(
+            url,
+                sslopt={"cert_reqs": ssl.CERT_NONE},
+                header={"Authorization": token},
+                subprotocols=['base64.channel.k8s.io']
+            )
     except Exception as e:
-        print(f"Cannot stream: {str(e)}")
+        print(f"create_connection exception: {e}")
         disconnect()
         return
-    while session["resp"].is_open():
-        session["resp"].update(timeout=1)
-        if session["resp"].peek_stdout():
-            temp_string = session["resp"].read_stdout()
-            print("STDOUT: %s" % temp_string)
-            emit(
-                'server_response',
-                {'data': temp_string}
-            )
-        if session["resp"].peek_stderr():
-            temp_string = session["resp"].read_stderr()
-            print("STDERR: %s" % temp_string)
-            emit(
-                'server_response',
-                {'data': temp_string}
-            )
+    while True:
+        try:
+            temp_string = session["wss"].recv()
+        except Exception as e:
+            print(f"wss recv exception: {e}")
+            break
+        print(temp_string)
+        return_string = base64.b64decode(temp_string[1:].encode()).decode()
+        print(return_string)
+        emit("server_response", return_string)
     disconnect()
 
 @socketio.on('submit_event', namespace='/shell')
 def shell_submit(message):
-    print("submit_event.")
-    if message.get("data"):
-        session["resp"].write_stdin(message.get("data") + "\n")
+    print(f"submit_event, message: {message}")
+    if message:
+        temp_string = "0" + (base64.b64encode(message.encode())).decode()
+        print(f"sending: {temp_string}")
+        try:
+            session["wss"].send(temp_string)
+        except Exception as e:
+            print(f"wss send exception: {e}")
 
 @socketio.on('disconnect', namespace='/shell')
 def shell_disconnect():
     print('Client disconnected', request.sid)
-    if session.get("resp"):
-        session["resp"].close()
+    try:
+        session["wss"].close()
+    except Exception as e:
+        print(f"disconnect exception: {e}")
 
 
 if __name__ == '__main__':
