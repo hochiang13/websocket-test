@@ -3,11 +3,6 @@ from flask import Flask, session, request, g, current_app
 from flask_socketio import SocketIO, emit, disconnect
 import requests, json
 from base64 import b64encode
-from kubernetes.config.kube_config import KubeConfigLoader
-from kubernetes.client import Configuration
-from kubernetes.client.rest import ApiException
-from kubernetes.client.api import core_v1_api
-from kubernetes.stream import stream
 import time
 import os
 import websocket, ssl, base64
@@ -86,9 +81,8 @@ def shell_first():
         except Exception as e:
             print(f"wss recv exception: {e}")
             break
-        print(temp_string)
         return_string = base64.b64decode(temp_string[1:].encode()).decode()
-        print(return_string)
+        print(f"sending decoded string to browser: {return_string}")
         emit("server_response", return_string)
     disconnect()
 
@@ -97,7 +91,7 @@ def shell_submit(message):
     print(f"submit_event, message: {message}")
     if message:
         temp_string = "0" + (base64.b64encode(message.encode())).decode()
-        print(f"sending: {temp_string}")
+        print(f"sending to rancher: {temp_string}")
         try:
             session["wss"].send(temp_string)
         except Exception as e:

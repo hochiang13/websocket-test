@@ -10,18 +10,25 @@
 
     <div id="terminal"></div>
 
-    <form id="emit" method="POST" action='#'>
-      <textarea cols="50" rows="5" name="emit_data" id="emit_data" placeholder="Message here."></textarea>
-      <input type="submit" value="Run">
-    </form>
-
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
     <script src="node_modules/xterm/lib/xterm.js"></script>
     <script type="text/javascript" charset="utf-8">
       $(document).ready(function() {
-        var term = new Terminal();
+
+        var term = new Terminal({
+          cursorBlink: true,
+          useStyle: true,
+          fontSize: 12,
+        });
+
+        term.onData((data) => {
+          console.log("terminal data event, message: " + data)
+          socket.emit('submit_event', data);
+        });
+
         term.open(document.getElementById("terminal"));
+        term.focus();
         var url = "http://192.168.56.101:8080/shell?namespace=db-project-abc&pod=abc-mysql-64f965bfb5-4mmsr";
         var option = {
           transportOptions: {
@@ -42,15 +49,8 @@
         });
 
         socket.on('server_response', function(msg) {
-          console.log("client server_response, writing output to DOM.");
-          console.log(msg);
+          console.log("client server_response, message: " + msg);
           term.write(msg);
-        });
-
-        $('form#emit').submit(function(event) {
-          console.log("sending submit event.")
-          socket.emit('submit_event', $('#emit_data').val());
-          return false;
         });
 
       });
