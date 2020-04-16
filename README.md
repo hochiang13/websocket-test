@@ -27,14 +27,19 @@ Then, start flask web server (from the directory where app.py is located):
 gunicorn -b 0.0.0.0:8080 --worker-class eventlet -w 1 app:app
 ```
 
-Kubernetes notes
-----------------
+websocket notes
+---------------
 
-The flask web server connects to Kubernetes api server to run shell commands in containers.
+The flask web server connects to rancher exec websocket to run shell commands in containers, using python library websocket-client.
 
-Kubernetes client python library on github:
+websocket-client documents:
 ```
-https://github.com/kubernetes-client/python
+https://pypi.org/project/websocket_client/
+```
+
+rancher exec websocket client javascript code:
+```
+https://github.com/rancher/ui/blob/master/lib/shared/addon/components/container-shell/component.js#L80-L150
 ```
 
 Flask socketio documents:
