@@ -3,11 +3,12 @@
   <head>
     <meta charset="utf-8"/>
     <title>Websocket Test</title>
+    <link rel="stylesheet" href="node_modules/xterm/css/xterm.css" />
   </head>
   <body>
     <h2>Websocket Test</h2>
 
-    <div id='log'></div>
+    <div id="terminal"></div>
 
     <form id="emit" method="POST" action='#'>
       <textarea cols="50" rows="5" name="emit_data" id="emit_data" placeholder="Message here."></textarea>
@@ -16,19 +17,22 @@
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
+    <script src="node_modules/xterm/lib/xterm.js"></script>
     <script type="text/javascript" charset="utf-8">
       $(document).ready(function() {
-        var url = "http://192.168.56.101:8080/shell?namespace=john-namespace&pod=k8s-ws-7748b986cf-rq4r5"
+        var term = new Terminal();
+        term.open(document.getElementById("terminal"));
+        var url = "http://192.168.56.101:8080/shell?namespace=db-project-abc&pod=abc-mysql-64f965bfb5-4mmsr";
         var option = {
           transportOptions: {
             polling: {
               extraHeaders: {
-                Authorization: "Bearer token-dt5mj:f87g97szf7chsdtcxrlr4scd8wjm6jzqwz6r7gpxmbh66v8v2mc88p",
-                clusterid: "c-fcwn9"
+                Authorization: "Bearer token-wqk2z:5p5xfb9qklxq988j6jdpl48862h9dlbnwnthzrhv8kswbqhsbqpftz",
+                clusterid: "c-6rlzw"
               }
             }
           }
-        }
+        };
 
         var socket = io.connect(url, option);
 
@@ -38,9 +42,9 @@
         });
 
         socket.on('server_response', function(msg) {
-          console.log("client server_response, writing output to DOM.")
-          console.log(msg)
-          msg.split("\n").forEach(add_line_to_log);
+          console.log("client server_response, writing output to DOM.");
+          console.log(msg);
+          term.write(msg);
         });
 
         $('form#emit').submit(function(event) {
@@ -48,17 +52,7 @@
           socket.emit('submit_event', $('#emit_data').val());
           return false;
         });
-        
-        function add_line_to_log(value) {
-          $('#log').append('<br>' + $('<div/>').text(value).html());
-        }
 
-        /*
-        $('form#emit').submit(function(event) {
-          socket.emit('submit_event', {data: $('#emit_data').val()});
-          return false;
-        });
-        */
       });
     </script>
   </body>

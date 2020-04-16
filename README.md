@@ -42,3 +42,11 @@ Flask socketio documents:
 https://flask-socketio.readthedocs.io/en/latest/
 ```
 
+xterm javascript library
+------------------------
+
+To use index.html with xterm, the xterm javascript library has to be installed with the following command:
+```
+npm install xterm
+```
+And then move the entire node_modules/ directory into /html/.
