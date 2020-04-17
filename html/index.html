@@ -23,8 +23,9 @@
         });
 
         term.onData((data) => {
-          console.log("terminal data event, message: " + data)
-          socket.emit('submit_event', data);
+          let temp_string = "0" + btoa(data)
+          console.log("terminal data event, message: " + temp_string)
+          socket.emit('submit_event', temp_string);
         });
 
         term.open(document.getElementById("terminal"));
@@ -50,7 +51,16 @@
 
         socket.on('server_response', function(msg) {
           console.log("client server_response, message: " + msg);
-          term.write(msg);
+          let temp_string = msg.slice(1)
+          switch (msg[0]) {
+            case '1':
+            case '2':
+            case '3':
+              if (temp_string) {
+                term.write(atob(temp_string));
+              }
+              break;
+          }
         });
 
       });

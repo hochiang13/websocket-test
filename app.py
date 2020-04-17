@@ -81,19 +81,19 @@ def shell_first():
         except Exception as e:
             print(f"wss recv exception: {e}")
             break
-        return_string = base64.b64decode(temp_string[1:].encode()).decode()
-        print(f"sending decoded string to browser: {return_string}")
-        emit("server_response", return_string)
+        #return_string = base64.b64decode(temp_string[1:].encode()).decode()
+        print(f"sending string to browser: {temp_string}")
+        emit("server_response", temp_string)
     disconnect()
 
 @socketio.on('submit_event', namespace='/shell')
 def shell_submit(message):
     print(f"submit_event, message: {message}")
     if message:
-        temp_string = "0" + (base64.b64encode(message.encode())).decode()
-        print(f"sending to rancher: {temp_string}")
+        #temp_string = "0" + (base64.b64encode(message.encode())).decode()
+        print(f"sending to rancher: {message}")
         try:
-            session["wss"].send(temp_string)
+            session["wss"].send(message)
         except Exception as e:
             print(f"wss send exception: {e}")
 
