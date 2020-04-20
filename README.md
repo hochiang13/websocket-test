@@ -55,3 +55,9 @@ To use index.html with xterm, the xterm javascript library has to be installed w
 npm install xterm
 ```
 And then move the entire node_modules/ directory into /html/.
+
+Use the following addon to fit the text output to the terminal object:
+```
+https://github.com/xtermjs/xterm.js/tree/master/addons/xterm-addon-fit
+```
+Note: cannot get this to work on the test index.html, import doesn't work for html embedded javascript.
