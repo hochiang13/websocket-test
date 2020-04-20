@@ -13,23 +13,10 @@
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
     <script src="node_modules/xterm/lib/xterm.js"></script>
+    <!-- <script src="node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script> -->
     <script type="text/javascript" charset="utf-8">
       $(document).ready(function() {
 
-        var term = new Terminal({
-          cursorBlink: true,
-          useStyle: true,
-          fontSize: 12,
-        });
-
-        term.onData((data) => {
-          let temp_string = "0" + btoa(data)
-          console.log("terminal data event, message: " + temp_string)
-          socket.emit('submit_event', temp_string);
-        });
-
-        term.open(document.getElementById("terminal"));
-        term.focus();
         var url = "http://192.168.56.101:8080/shell?namespace=db-project-abc&pod=abc-mysql-64f965bfb5-4mmsr";
         var option = {
           transportOptions: {
@@ -41,12 +28,29 @@
             }
           }
         };
-
         var socket = io.connect(url, option);
 
         socket.on('connect', function() {
           console.log("client connect event, sending first_event.")
           socket.emit('first_event');
+        });
+
+        var term = new Terminal({
+          cursorBlink: true,
+          useStyle: true,
+          fontSize: 12,
+        });
+        //var fit_addon = new FitAddon();
+
+        //term.loadAddon(fit_addon);
+        term.open(document.getElementById("terminal"));
+        //fit_addon.fit();
+        term.focus();
+
+        term.onData((data) => {
+          let temp_string = "0" + btoa(data)
+          console.log("terminal data event, message: " + temp_string)
+          socket.emit('submit_event', temp_string);
         });
 
         socket.on('server_response', function(msg) {
