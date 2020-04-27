@@ -54,10 +54,16 @@ def shell_first():
     cluster_id = request.headers.get("clusterid")
     namespace = request.args.get("namespace")
     pod = request.args.get("pod")
+    # if container is not included as a parameter in the websocket connect http request,
+    #   automatically choose the first container of the pod.
+    container = request.args.get("container")
 
     #container=k8s-ws&
     url = f"wss://{current_app.config['RANCHER_IP']}/k8s/clusters/{cluster_id}/api/v1"
-    url += f"/namespaces/{namespace}/pods/{pod}/exec?stdout=1&stdin=1&stderr=1&tty=1"
+    url += f"/namespaces/{namespace}/pods/{pod}/exec?"
+    if isinstance(container, str):
+        url += f"container={container}&"
+    url += "stdout=1&stdin=1&stderr=1&tty=1"
     url += "&command=%2Fbin%2Fsh&command=-c&command=TERM%3Dxterm-256color%3B%20export%20"
     url += "TERM%3B%20%5B%20-x%20%2Fbin%2Fbash%20%5D%20%26%26%20(%5B%20-x%20%2Fusr%2Fbin"
     url += "%2Fscript%20%5D%20%26%26%20%2Fusr%2Fbin%2F"
