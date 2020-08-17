@@ -1,7 +1,7 @@
-Testing websocket
-=================
+Poseidon websocket server
+=========================
 
-Test browser javascript websocket client, flask websocket server, and python kubectl library to connect to container shell.
+A flask websocket server that acts as a go-between for xterm javascript module as the client on the browser, and the exec and log websocket server on rancher.
 
 Run browser client
 --------------
@@ -27,8 +27,14 @@ Then, start flask web server (from the directory where app.py is located):
 gunicorn -b 0.0.0.0:8080 --worker-class eventlet -w 1 app:app
 ```
 
-websocket notes
----------------
+Create docker container for flask server
+----------------------------------
+```
+docker build -t 10.134.200.110:5000/k8s-ws:version .
+```
+
+Flask server notes
+------------------
 
 The flask web server connects to rancher exec websocket to run shell commands in containers, using python library websocket-client.
 
@@ -47,6 +53,11 @@ Flask socketio documents:
 https://flask-socketio.readthedocs.io/en/latest/
 ```
 
+When running on production and flask server needs to be scaled up -- each websocket connection needs to send all its data to the same flask server container, so make sure enable session affinity for the loadbalancer service to nginx ingress controller, and set the following annotation for the websocket ingress:
+```
+nginx.ingress.kubernetes.io/affinity = cookie
+```
+
 xterm javascript library
 ------------------------
 
@@ -61,3 +72,4 @@ Use the following addon to fit the text output to the terminal object:
 https://github.com/xtermjs/xterm.js/tree/master/addons/xterm-addon-fit
 ```
 Note: cannot get this to work on the test index.html, import doesn't work for html embedded javascript.
+
