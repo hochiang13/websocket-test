@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY") or \
     'cannot be guessed'
 app.config["RANCHER_IP"] = os.environ.get("RANCHER_IP") or \
-    "10.62.164.163"
+    "10.134.202.115"
 socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
 
 
@@ -40,7 +40,6 @@ def shell_connect():
     if token.split(" ")[0] != "Bearer":
         print("connect event, unexpected Authorization received.")
         return False
-
 
 @socketio.on('first_event', namespace='/shell')
 def shell_first():
@@ -105,6 +104,80 @@ def shell_submit(message):
 
 @socketio.on('disconnect', namespace='/shell')
 def shell_disconnect():
+    print('Client disconnected', request.sid)
+    try:
+        session["wss"].close()
+    except Exception as e:
+        print(f"disconnect exception: {e}")
+
+@socketio.on('connect', namespace='/log')
+def log_connect():
+    # note: the connect event on server side must end,
+    # or the server will not accept events!
+
+    print("Connect event.")
+    token = request.headers.get("Authorization")
+    cluster_id = request.headers.get("clusterid")
+    namespace = request.args.get("namespace")
+    pod = request.args.get("pod")
+    for key in token, cluster_id, namespace, pod:
+        if not isinstance(key, str):
+            print("connect event, missing data from frontend.")
+            return False
+        if len(key) == 0:
+            print("connect event, missing data from frontend.")
+            return False
+    if len(token.split(" ")) != 2:
+        print("connect event, unexpected Authorization received.")
+        return False
+    if token.split(" ")[0] != "Bearer":
+        print("connect event, unexpected Authorization received.")
+        return False
+
+@socketio.on('first_event', namespace='/log')
+def log_first():
+    # need a first event after connect event to start websocket to rancher.
+    # Tried starting a background thread in the connect event function,
+    #   it doesn't work because it is outside of the application context,
+    #   and socketio.emit will send event to all clients.
+
+    print("first_event.")
+    token = request.headers.get("Authorization")
+    cluster_id = request.headers.get("clusterid")
+    namespace = request.args.get("namespace")
+    pod = request.args.get("pod")
+    # if container is not included as a parameter in the websocket connect http request,
+    #   automatically choose the first container of the pod.
+    container = request.args.get("container")
+
+    url = f"wss://{current_app.config['RANCHER_IP']}/k8s/clusters/{cluster_id}/api/v1/"
+    url += f"namespaces/{namespace}/pods/{pod}/log?"
+    if isinstance(container, str):
+        url += f"container={container}&"
+    url += "tailLines=500&follow=true&timestamps=true&previous=false"
+    try:
+        session["wss"] = websocket.create_connection(
+            url,
+                sslopt={"cert_reqs": ssl.CERT_NONE},
+                header={"Authorization": token},
+                subprotocols=['base64.binary.k8s.io']
+            )
+    except Exception as e:
+        print(f"create_connection exception: {e}")
+        disconnect()
+        return
+    while True:
+        try:
+            temp_string = session["wss"].recv()
+        except Exception as e:
+            print(f"wss recv exception: {e}")
+            break
+        print(f"sending string to browser: {temp_string}")
+        emit("server_response", temp_string)
+    disconnect()
+
+@socketio.on('disconnect', namespace='/log')
+def log_disconnect():
     print('Client disconnected', request.sid)
     try:
         session["wss"].close()

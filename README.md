@@ -12,6 +12,12 @@ Serve html/index.html with a nginx container.
 docker run -d --name nginx_wd -p 80:80 -v /<full_local_path>/html/:/usr/share/nginx/html/ nginx:alpine
 ```
 
+Open html on browser with the following URLs:
+```
+http://192.168.56.101
+http://192.168.56.101/log.html
+```
+
 Run flask server
 ------------
 

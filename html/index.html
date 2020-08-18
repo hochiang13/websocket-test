@@ -2,12 +2,11 @@
 <html>
   <head>
     <meta charset="utf-8"/>
-    <title>Websocket Test</title>
+    <title>Container Exec</title>
     <link rel="stylesheet" href="node_modules/xterm/css/xterm.css" />
   </head>
   <body>
-    <h2>Websocket Test</h2>
-
+    <h2>container exec</h2>
     <div id="terminal"></div>
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
@@ -17,13 +16,13 @@
     <script type="text/javascript" charset="utf-8">
       $(document).ready(function() {
 
-        var url = "http://fixopaas.10.62.164.143.xip.io/shell?namespace=db-project-abc&pod=abc-mysql-64f965bfb5-4mmsr";
+        var url = "http://192.168.56.101:8080/shell?namespace=john-namespace&pod=chain1-7bd57c5667-fchcx&container=chain1";
         var option = {
           transportOptions: {
             polling: {
               extraHeaders: {
-                Authorization: "Bearer token-wqk2z:5p5xfb9qklxq988j6jdpl48862h9dlbnwnthzrhv8kswbqhsbqpftz",
-                clusterid: "c-6rlzw"
+                Authorization: "Bearer token-rx6s7:kbjxw2hrvhqtszmqx797rfb9cb5tdcrtgvcf2xlg5x8blrvcwjwbk2",
+                clusterid: "c-xzmwt"
               }
             }
           }

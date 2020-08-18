@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Container Log</title>
+    <link rel="stylesheet" href="node_modules/xterm/css/xterm.css" />
+  </head>
+  <body>
+    <h2>container log</h2>
+    <div id="log"></div>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
+    <script src="node_modules/xterm/lib/xterm.js"></script>
+    <!-- <script src="node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script> -->
+    <script type="text/javascript" charset="utf-8">
+      $(document).ready(function() {
+
+        let url = "http://192.168.56.101:8080/log?namespace=john-namespace&pod=chain1-7bd57c5667-fchcx&container=chain1";
+        let option = {
+          transportOptions: {
+            polling: {
+              extraHeaders: {
+                Authorization: "Bearer token-rx6s7:kbjxw2hrvhqtszmqx797rfb9cb5tdcrtgvcf2xlg5x8blrvcwjwbk2",
+                clusterid: "c-xzmwt"
+              }
+            }
+          }
+        };
+        let log_socket = io.connect(url, option);
+
+        log_socket.on('connect', function() {
+          console.log("log client connect event, sending first_event.");
+          log_socket.emit('first_event');
+        });
+
+        let log_term = new Terminal({
+          cursorBlink: true,
+          useStyle: true,
+          fontSize: 12,
+        });
+
+        log_term.open(document.getElementById("log"));
+        log_term.focus();
+
+        log_socket.on('server_response', function(msg) {
+          console.log("log client server_response, message: " + msg);
+          log_term.write(atob(msg));
+        });
+
+      });
+    </script>
+  </body>
+</html>
