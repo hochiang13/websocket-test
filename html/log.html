@@ -3,15 +3,18 @@
   <head>
     <meta charset="utf-8"/>
     <title>Container Log</title>
-    <link rel="stylesheet" href="node_modules/xterm/css/xterm.css" />
+    <style>
+    </style>
+
   </head>
   <body>
     <h2>container log</h2>
-    <div id="log"></div>
+    <div class="container-log">
+      <pre class="log-body wrap-lines"></pre>
+    </div>
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
-    <script src="node_modules/xterm/lib/xterm.js"></script>
     <!-- <script src="node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script> -->
     <script type="text/javascript" charset="utf-8">
       $(document).ready(function() {
@@ -34,19 +37,55 @@
           log_socket.emit('first_event');
         });
 
-        let log_term = new Terminal({
-          cursorBlink: true,
-          useStyle: true,
-          fontSize: 12,
-        });
-
-        log_term.open(document.getElementById("log"));
-        log_term.focus();
-
+        let body = null;
         log_socket.on('server_response', function(msg) {
-          console.log("log client server_response, message: " + msg);
-          log_term.write(atob(msg));
+          body = $('.log-body')[0];
+          const data = atob(msg);
+          let html = '';
+
+          data.trim().split(/\n/)
+            .filter((line) => line)
+            .forEach((line) => {
+              var match = line.match(/^\[?([^ \]]+)\]?\s?/);
+              var dateStr = '';
+              var msg = '';
+
+              if (match && isDate(new Date(match[1]))) {
+                var date = new Date(match[1]);
+
+                msg = line.substr(match[0].length);
+                dateStr = `<span class="log-date">${  escapeHtml(date.toLocaleDateString())  } ${  escapeHtml(date.toLocaleTimeString())  } </span>`;
+              } else {
+                msg = line;
+              }
+
+              // @@TODO@@ - 10-13-17 - needed to remove the escaping here because it was being double escaped but double verify that its acutally being escaped
+              html += `<div class="log-msg log-combined">${
+                dateStr
+              }${ msg
+              }</div>`
+            });
+
+          body.insertAdjacentHTML('beforeend', html);
         });
+
+        function isDate(date) {
+          return new Date(date) !== 'Invalid Date' && !isNaN(new Date(date))
+        }
+        function escapeHtml(html) {
+          let entityMap = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+            '/': '&#x2F;'
+          };
+
+          return String(html).replace(/[&<>"'\/]/g, (s) => {
+            return entityMap[s];
+          });
+        }
 
       });
     </script>
