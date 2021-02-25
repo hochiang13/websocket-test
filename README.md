@@ -54,6 +54,11 @@ rancher exec websocket client javascript code:
 https://github.com/rancher/ui/blob/master/lib/shared/addon/components/container-shell/component.js#L80-L150
 ```
 
+rancher container log client javascript code:
+```
+https://github.com/rancher/ui/blob/master/app/components/container-logs/component.js
+```
+
 Flask socketio documents:
 ```
 https://flask-socketio.readthedocs.io/en/latest/
